@@ -1,11 +1,19 @@
 //@version=5
-indicator("WTT Scalper Rev1.2", shorttitle="WTT_Scalper_R1.2", overlay=true)
+indicator("WTT Scalper Rev1.5", shorttitle="WTT_Scalper_R1.5", overlay=true)
 
 // =============================================================================
 // WaveRider Trading Technologies - Keltner Channel Trading System
 // =============================================================================
 //
 // REVISION HISTORY (Most Recent First):
+// R1.5: Simplified Performance Table - Streamlined performance table to show only essential metrics
+//       Removed total trades row and reduced table to 3 rows: header, win rate, and squeeze status.
+//       Changed squeeze indicator squares from yellow to orange for better WTT branding consistency.
+//       Maintains all core functionality while providing cleaner, more focused performance display.
+// R1.4: Trailing Stop Enhancement - Added trailing stop functionality that activates when price reaches 50% of profit target
+//       Implemented trailing stop with ATR-based distance that locks in profits while allowing for continued upside.
+//       Added visual indicators for trailing stop levels and enhanced risk management for better trade management.
+//       Maintains all core functionality while providing dynamic exit management for improved profitability.
 // R1.3: Squeeze-Only Strategy - Converted to squeeze release signals only for higher quality entries
 //       Removed traditional breakout signals, keeping only squeeze release entries. Changed visual
 //       signals from circles to directional triangles for better clarity. Updated alerts to reflect
@@ -40,6 +48,7 @@ indicator("WTT Scalper Rev1.2", shorttitle="WTT_Scalper_R1.2", overlay=true)
 // - Risk management with ATR-based position sizing
 // - Success rate and drawdown monitoring
 // - Subtle squeeze indicators (tiny yellow squares)
+// - Trailing stop functionality with 50% profit target activation
 // =============================================================================
 
 // INPUT SECTION
@@ -58,6 +67,7 @@ volume_ma_length = input.int(20, title="Volume MA Length", minval=1, group="Trad
 atr_length = input.int(14, title="ATR Length", minval=1, group="Risk Management")
 stop_loss_multiplier = input.float(1.5, title="Stop Loss ATR Multiplier", minval=0.1, step=0.1, group="Risk Management")
 profit_target_multiplier = input.float(2.5, title="Profit Target ATR Multiplier", minval=0.1, step=0.1, group="Risk Management")
+trailing_stop_multiplier = input.float(1.0, title="Trailing Stop ATR Multiplier", minval=0.1, step=0.1, group="Risk Management")
 risk_percent = input.float(2.0, title="Risk Per Trade (%)", minval=0.1, maxval=10.0, step=0.1, group="Risk Management")
 
 enable_squeeze = input.bool(true, title="Enable Squeeze Detection", group="Squeeze")
@@ -122,14 +132,24 @@ var float long_stop_loss = na
 var float long_profit_target = na
 var float short_stop_loss = na
 var float short_profit_target = na
+var float long_trailing_stop = na
+var float short_trailing_stop = na
+var bool long_trailing_active = false
+var bool short_trailing_active = false
+var bool long_trailing_active_prev = false
+var bool short_trailing_active_prev = false
 
 if long_signal_enhanced
     long_stop_loss := close - (atr_value * stop_loss_multiplier)
     long_profit_target := close + (atr_value * profit_target_multiplier)
+    long_trailing_active := false
+    long_trailing_stop := na
 
 if short_signal_enhanced
     short_stop_loss := close + (atr_value * stop_loss_multiplier)
     short_profit_target := close - (atr_value * profit_target_multiplier)
+    short_trailing_active := false
+    short_trailing_stop := na
 
 var bool in_long_position = false
 var bool in_short_position = false
@@ -148,13 +168,52 @@ if short_signal_enhanced and not in_short_position and not in_long_position
     entry_price := close
     bars_in_trade := 0
 
-if in_long_position and (long_exit or close <= long_stop_loss or close >= long_profit_target)
+if in_long_position and (long_exit or close <= long_stop_loss or close >= long_profit_target or (long_trailing_active and close <= long_trailing_stop))
     in_long_position := false
     entry_price := na
+    long_trailing_active := false
+    long_trailing_stop := na
 
-if in_short_position and (short_exit or close >= short_stop_loss or close <= short_profit_target)
+if in_short_position and (short_exit or close >= short_stop_loss or close <= short_profit_target or (short_trailing_active and close >= short_trailing_stop))
     in_short_position := false
     entry_price := na
+    short_trailing_active := false
+    short_trailing_stop := na
+
+// TRAILING STOP LOGIC
+if in_long_position
+    // Check if price has reached 50% of profit target
+    profit_distance = long_profit_target - entry_price
+    fifty_percent_level = entry_price + (profit_distance * 0.5)
+    
+    if close >= fifty_percent_level and not long_trailing_active
+        long_trailing_active := true
+        long_trailing_stop := close - (atr_value * trailing_stop_multiplier)
+    
+    // Update trailing stop if active
+    if long_trailing_active
+        new_trailing_stop = close - (atr_value * trailing_stop_multiplier)
+        if new_trailing_stop > long_trailing_stop
+            long_trailing_stop := new_trailing_stop
+
+if in_short_position
+    // Check if price has reached 50% of profit target
+    profit_distance = entry_price - short_profit_target
+    fifty_percent_level = entry_price - (profit_distance * 0.5)
+    
+    if close <= fifty_percent_level and not short_trailing_active
+        short_trailing_active := true
+        short_trailing_stop := close + (atr_value * trailing_stop_multiplier)
+    
+    // Update trailing stop if active
+    if short_trailing_active
+        new_trailing_stop = close + (atr_value * trailing_stop_multiplier)
+        if new_trailing_stop < short_trailing_stop
+            short_trailing_stop := new_trailing_stop
+
+// Update previous bar trailing stop status
+long_trailing_active_prev := long_trailing_active
+short_trailing_active_prev := short_trailing_active
 
 if in_long_position or in_short_position
     bars_in_trade += 1
@@ -167,14 +226,32 @@ var float peak_equity = 0.0
 
 if in_long_position[1] and not in_long_position
     total_trades += 1
-    trade_pnl = (close - entry_price[1]) / entry_price[1] * 100
+    // Calculate actual exit price based on exit condition
+    exit_price = close
+    if long_trailing_active_prev and close <= long_trailing_stop[1]
+        exit_price := long_trailing_stop[1]  // Trailing stop exit
+    else if close >= long_profit_target[1]
+        exit_price := long_profit_target[1]  // Profit target exit
+    else if close <= long_stop_loss[1]
+        exit_price := long_stop_loss[1]      // Stop loss exit
+    
+    trade_pnl = (exit_price - entry_price[1]) / entry_price[1] * 100
     total_pnl += trade_pnl
     if trade_pnl > 0
         winning_trades += 1
 
 if in_short_position[1] and not in_short_position
     total_trades += 1
-    trade_pnl = (entry_price[1] - close) / entry_price[1] * 100
+    // Calculate actual exit price based on exit condition
+    exit_price = close
+    if short_trailing_active_prev and close >= short_trailing_stop[1]
+        exit_price := short_trailing_stop[1]  // Trailing stop exit
+    else if close <= short_profit_target[1]
+        exit_price := short_profit_target[1]  // Profit target exit
+    else if close >= short_stop_loss[1]
+        exit_price := short_stop_loss[1]      // Stop loss exit
+    
+    trade_pnl = (entry_price[1] - exit_price) / entry_price[1] * 100
     total_pnl += trade_pnl
     if trade_pnl > 0
         winning_trades += 1
@@ -209,43 +286,35 @@ plotshape(show_signals and long_signal_enhanced, "Long Squeeze", shape.triangleu
 plotshape(show_signals and short_signal_enhanced, "Short Squeeze", shape.triangledown, location.abovebar, color.purple, size=size.small)
 
 // SUBTLE SQUEEZE SQUARES
-plotchar(is_squeeze, "SQUEEZE SQUARE", "■", location.top, color.new(color.yellow, 80), size=size.tiny, offset=0)
-plotchar(is_squeeze, "SQUEEZE SQUARE", "■", location.bottom, color.new(color.yellow, 80), size=size.tiny, offset=0)
+plotchar(is_squeeze, "SQUEEZE SQUARE", "■", location.top, color.new(color.orange, 80), size=size.tiny, offset=0)
+plotchar(is_squeeze, "SQUEEZE SQUARE", "■", location.bottom, color.new(color.orange, 80), size=size.tiny, offset=0)
 
 long_sl_show = in_long_position ? long_stop_loss : na
 long_tp_show = in_long_position ? long_profit_target : na
+long_ts_show = in_long_position and long_trailing_active ? long_trailing_stop : na
 short_sl_show = in_short_position ? short_stop_loss : na
 short_tp_show = in_short_position ? short_profit_target : na
+short_ts_show = in_short_position and short_trailing_active ? short_trailing_stop : na
 
 plot(long_sl_show, "Long SL", color.orange, 1, plot.style_circles)
 plot(long_tp_show, "Long TP", color.green, 1, plot.style_circles)
+plot(long_ts_show, "Long Trailing Stop", color.red, 2, plot.style_circles)
 plot(short_sl_show, "Short SL", color.purple, 1, plot.style_circles)
 plot(short_tp_show, "Short TP", color.green, 1, plot.style_circles)
+plot(short_ts_show, "Short Trailing Stop", color.red, 2, plot.style_circles)
 
 // Labels removed for cleaner chart appearance
 
 if show_performance and barstate.islast
-    var table perf_table = table.new(position.top_right, 2, 8, bgcolor=color.new(color.black, 10), border_width=2, border_color=color.orange)
-    table.cell(perf_table, 0, 0, "WTT Keltner Performance", text_color=color.white, text_size=size.normal, bgcolor=color.orange)
+    var table perf_table = table.new(position.top_right, 2, 3, bgcolor=color.new(color.black, 10), border_width=2, border_color=color.orange)
+    table.cell(perf_table, 0, 0, "WTT Scalper Performance", text_color=color.white, text_size=size.normal, bgcolor=color.orange)
     table.cell(perf_table, 1, 0, "", bgcolor=color.orange)
-    table.cell(perf_table, 0, 1, "Total Trades", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
-    table.cell(perf_table, 1, 1, str.tostring(total_trades), text_color=color.lime, text_size=size.small, bgcolor=color.new(color.black, 20))
-    table.cell(perf_table, 0, 2, "Win Rate", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
-    table.cell(perf_table, 1, 2, str.tostring(win_rate, "#.#") + "%", text_color=color.lime, text_size=size.small, bgcolor=color.new(color.black, 20))
-    table.cell(perf_table, 0, 3, "Total P&L", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
-    table.cell(perf_table, 1, 3, str.tostring(total_pnl, "#.##") + "%", text_color=total_pnl >= 0 ? color.lime : color.red, text_size=size.small, bgcolor=color.new(color.black, 20))
-    table.cell(perf_table, 0, 4, "Max Drawdown", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
-    table.cell(perf_table, 1, 4, str.tostring(max_drawdown, "#.##") + "%", text_color=color.red, text_size=size.small, bgcolor=color.new(color.black, 20))
-    table.cell(perf_table, 0, 5, "Current Position", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
-    position_text = in_long_position ? "LONG" : in_short_position ? "SHORT" : "FLAT"
-    position_color = in_long_position ? color.orange : in_short_position ? color.fuchsia : color.silver
-    table.cell(perf_table, 1, 5, position_text, text_color=position_color, text_size=size.small, bgcolor=color.new(color.black, 20))
-    table.cell(perf_table, 0, 6, "Bars in Trade", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
-    table.cell(perf_table, 1, 6, str.tostring(bars_in_trade), text_color=color.lime, text_size=size.small, bgcolor=color.new(color.black, 20))
-    table.cell(perf_table, 0, 7, "Squeeze Status", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
+    table.cell(perf_table, 0, 1, "Win Rate", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
+    table.cell(perf_table, 1, 1, str.tostring(win_rate, "#.#") + "%", text_color=color.lime, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(perf_table, 0, 2, "Squeeze Status", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
     squeeze_text = is_squeeze ? "ACTIVE" : "NONE"
     squeeze_color = is_squeeze ? color.yellow : color.silver
-    table.cell(perf_table, 1, 7, squeeze_text, text_color=squeeze_color, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(perf_table, 1, 2, squeeze_text, text_color=squeeze_color, text_size=size.small, bgcolor=color.new(color.black, 20))
 
 // ALERTS
 if long_signal_enhanced
@@ -259,3 +328,9 @@ if is_squeeze and not is_squeeze[1]
 
 if squeeze_release
     alert("WTT Scalper: SQUEEZE RELEASE - Volatility expansion beginning", alert.freq_once_per_bar)
+
+if long_trailing_active and not long_trailing_active[1]
+    alert("WTT Scalper: TRAILING STOP ACTIVATED for LONG position at " + str.tostring(close, "#.##"), alert.freq_once_per_bar)
+
+if short_trailing_active and not short_trailing_active[1]
+    alert("WTT Scalper: TRAILING STOP ACTIVATED for SHORT position at " + str.tostring(close, "#.##"), alert.freq_once_per_bar)
