@@ -1,11 +1,17 @@
 //@version=5
-indicator("WTT Scalper Rev1.5", shorttitle="WTT_Scalper_R1.5", overlay=true)
+indicator("WTT Scalper Rev1.6", shorttitle="WTT_Scalper_R1.6", overlay=true)
 
 // =============================================================================
 // WaveRider Trading Technologies - Keltner Channel Trading System
 // =============================================================================
 //
 // REVISION HISTORY (Most Recent First):
+// R1.6: Enhanced Alert Precision and Visual Improvements - Increased alert price precision to 5 decimal places
+//       for all signal types. Optimized code structure with functions for better maintainability.
+//       Added squeeze cloud visualization with purple fill and orange boundary lines. Improved signal
+//       visibility with small triangles and dotted vertical lines. Enhanced color scheme consistency
+//       with WTT branding. Maintains all core functionality while providing better visual feedback
+//       and more precise alert information.
 // R1.5: Simplified Performance Table - Streamlined performance table to show only essential metrics
 //       Removed total trades row and reduced table to 3 rows: header, win rate, and squeeze status.
 //       Changed squeeze indicator squares from yellow to orange for better WTT branding consistency.
@@ -14,15 +20,15 @@ indicator("WTT Scalper Rev1.5", shorttitle="WTT_Scalper_R1.5", overlay=true)
 //       Implemented trailing stop with ATR-based distance that locks in profits while allowing for continued upside.
 //       Added visual indicators for trailing stop levels and enhanced risk management for better trade management.
 //       Maintains all core functionality while providing dynamic exit management for improved profitability.
-// R1.3: Squeeze-Only Strategy - Converted to squeeze release signals only for higher quality entries
+// R1.3: Squeeze-only Strategy - Converted to squeeze release signals only for higher quality entries
 //       Removed traditional breakout signals, keeping only squeeze release entries. Changed visual
 //       signals from circles to directional triangles for better clarity. Updated alerts to reflect
 //       squeeze-only approach. Maintains all core functionality while focusing on volatility expansion
 //       opportunities for improved signal quality and reduced noise.
 // R1.2: Simplified Interface - Removed unnecessary input controls for cleaner user experience
 //       Removed enable_long/enable_short inputs and hardcoded to true. Removed trend filter
-//       inputs and hardcoded to 50-period EMA. Removed unused show_labels and enable_alerts
-//       inputs. Streamlined interface while maintaining all core functionality.
+//       inputs and hardcoded to 50-period EMA. Removed unused inputs and streamlined alerts.
+//       Streamlined interface while maintaining all core functionality.
 // R1.1: Fixed Plot Issues - Resolved "Undeclared identifier 'plot'" error
 //       Simplified plot statements and improved code structure for better
 //       Pine Script v5 compatibility. Maintained all functionality while
@@ -52,10 +58,10 @@ indicator("WTT Scalper Rev1.5", shorttitle="WTT_Scalper_R1.5", overlay=true)
 // =============================================================================
 
 // INPUT SECTION
-kc_length = input.int(20, title="KC Length", minval=1, group="Keltner Channel")
-kc_multiplier = input.float(2.0, title="KC Multiplier", minval=0.1, step=0.1, group="Keltner Channel")
-kc_ma_type = input.string("EMA", title="MA Type", options=["SMA", "EMA", "WMA", "HMA"], group="Keltner Channel")
-kc_source = input.source(close, title="Source", group="Keltner Channel")
+scalp_length = input.int(20, title="Channel Length", minval=1, group="Scalp Channel")
+scalp_multiplier = input.float(2.0, title="Channel Multiplier", minval=0.1, step=0.1, group="Scalp Channel")
+scalp_ma_type = input.string("EMA", title="MA Type", options=["SMA", "EMA", "WMA", "HMA"], group="Scalp Channel")
+scalp_source = input.source(close, title="Source", group="Scalp Channel")
 
 // Multi-timeframe inputs removed for simplicity
 
@@ -74,14 +80,13 @@ enable_squeeze = input.bool(true, title="Enable Squeeze Detection", group="Squee
 bb_length = input.int(20, title="Bollinger Bands Length", minval=1, group="Squeeze")
 bb_multiplier = input.float(2.0, title="BB Multiplier", minval=0.1, step=0.1, group="Squeeze")
 
-show_kc_bands = input.bool(true, title="Show KC Bands", group="Visual")
+show_kc_bands = input.bool(false, title="Show KC Bands", group="Visual")
 show_trend_ma = input.bool(false, title="Show Trend MA", group="Visual")
 show_signals = input.bool(true, title="Show Trade Signals", group="Visual")
 show_performance = input.bool(true, title="Show Performance Table", group="Visual")
 
-
-
-// CALCULATION SECTION
+// FUNCTION DEFINITIONS
+// Moving Average Function
 ma_function(src, length, ma_type) =>
     switch ma_type
         "SMA" => ta.sma(src, length)
@@ -90,12 +95,34 @@ ma_function(src, length, ma_type) =>
         "HMA" => ta.hma(src, length)
         => ta.ema(src, length)
 
-kc_ma = ma_function(kc_source, kc_length, kc_ma_type)
-kc_range = ta.atr(kc_length) * kc_multiplier
+// Signal Generation Function
+generate_signal(is_long, squeeze_release, kc_ma, is_trend, volume_filter) =>
+    if is_long
+        squeeze_release and close > kc_ma and is_trend and volume_filter
+    else
+        squeeze_release and close < kc_ma and is_trend and volume_filter
+
+
+
+// Exit Condition Function
+check_exit_conditions(is_long, kc_ma, kc_upper, kc_lower, stop_loss, profit_target, trailing_active, trailing_stop) =>
+    if is_long
+        close < kc_ma or close < kc_lower or close <= stop_loss or close >= profit_target or (trailing_active and close <= trailing_stop)
+    else
+        close > kc_ma or close > kc_upper or close >= stop_loss or close <= profit_target or (trailing_active and close >= trailing_stop)
+
+
+
+// Alert Function
+generate_alert(condition, message) =>
+    if condition
+        alert(message, alert.freq_once_per_bar)
+
+// CALCULATION SECTION
+kc_ma = ma_function(scalp_source, scalp_length, scalp_ma_type)
+kc_range = ta.atr(scalp_length) * scalp_multiplier
 kc_upper = kc_ma + kc_range
 kc_lower = kc_ma - kc_range
-
-// Multi-timeframe calculations removed
 
 trend_ma = ta.ema(close, 50)
 is_uptrend = close > trend_ma
@@ -115,19 +142,10 @@ is_squeeze = bb_upper < kc_upper and bb_lower > kc_lower
 squeeze_release = is_squeeze[1] and not is_squeeze
 
 // TRADING LOGIC
-long_breakout = close > kc_upper and close[1] <= kc_upper[1]
-short_breakout = close < kc_lower and close[1] >= kc_lower[1]
+long_signal_enhanced = generate_signal(true, squeeze_release, kc_ma, is_uptrend, volume_filter_long)
+short_signal_enhanced = generate_signal(false, squeeze_release, kc_ma, is_downtrend, volume_filter_short)
 
-long_signal = long_breakout and is_uptrend and volume_filter_long and true
-short_signal = short_breakout and is_downtrend and volume_filter_short and true
-
-// Squeeze release signals only
-long_signal_enhanced = squeeze_release and close > kc_ma and is_uptrend and volume_filter_long and true
-short_signal_enhanced = squeeze_release and close < kc_ma and is_downtrend and volume_filter_short and true
-
-long_exit = close < kc_ma or close < kc_lower
-short_exit = close > kc_ma or close > kc_upper
-
+// Risk Management Variables
 var float long_stop_loss = na
 var float long_profit_target = na
 var float short_stop_loss = na
@@ -136,9 +154,8 @@ var float long_trailing_stop = na
 var float short_trailing_stop = na
 var bool long_trailing_active = false
 var bool short_trailing_active = false
-var bool long_trailing_active_prev = false
-var bool short_trailing_active_prev = false
 
+// Calculate risk levels when signals occur
 if long_signal_enhanced
     long_stop_loss := close - (atr_value * stop_loss_multiplier)
     long_profit_target := close + (atr_value * profit_target_multiplier)
@@ -151,6 +168,7 @@ if short_signal_enhanced
     short_trailing_active := false
     short_trailing_stop := na
 
+// Position Management
 var bool in_long_position = false
 var bool in_short_position = false
 var float entry_price = na
@@ -168,88 +186,66 @@ if short_signal_enhanced and not in_short_position and not in_long_position
     entry_price := close
     bars_in_trade := 0
 
-if in_long_position and (long_exit or close <= long_stop_loss or close >= long_profit_target or (long_trailing_active and close <= long_trailing_stop))
+if in_long_position or in_short_position
+    bars_in_trade += 1
+
+// Trailing Stop Logic
+if in_long_position and close >= long_profit_target * 0.5 and not long_trailing_active
+    long_trailing_active := true
+    long_trailing_stop := close - (atr_value * trailing_stop_multiplier)
+
+if in_short_position and close <= short_profit_target * 0.5 and not short_trailing_active
+    short_trailing_active := true
+    short_trailing_stop := close + (atr_value * trailing_stop_multiplier)
+
+if long_trailing_active
+    long_trailing_stop := math.max(long_trailing_stop[1], close - (atr_value * trailing_stop_multiplier))
+
+if short_trailing_active
+    short_trailing_stop := math.min(short_trailing_stop[1], close + (atr_value * trailing_stop_multiplier))
+
+// Exit Conditions
+long_exit = check_exit_conditions(true, kc_ma, kc_upper, kc_lower, long_stop_loss, long_profit_target, long_trailing_active, long_trailing_stop)
+short_exit = check_exit_conditions(false, kc_ma, kc_upper, kc_lower, short_stop_loss, short_profit_target, short_trailing_active, short_trailing_stop)
+
+if long_exit
     in_long_position := false
     entry_price := na
     long_trailing_active := false
     long_trailing_stop := na
 
-if in_short_position and (short_exit or close >= short_stop_loss or close <= short_profit_target or (short_trailing_active and close >= short_trailing_stop))
+if short_exit
     in_short_position := false
     entry_price := na
     short_trailing_active := false
     short_trailing_stop := na
 
-// TRAILING STOP LOGIC
-if in_long_position
-    // Check if price has reached 50% of profit target
-    profit_distance = long_profit_target - entry_price
-    fifty_percent_level = entry_price + (profit_distance * 0.5)
-    
-    if close >= fifty_percent_level and not long_trailing_active
-        long_trailing_active := true
-        long_trailing_stop := close - (atr_value * trailing_stop_multiplier)
-    
-    // Update trailing stop if active
-    if long_trailing_active
-        new_trailing_stop = close - (atr_value * trailing_stop_multiplier)
-        if new_trailing_stop > long_trailing_stop
-            long_trailing_stop := new_trailing_stop
-
-if in_short_position
-    // Check if price has reached 50% of profit target
-    profit_distance = entry_price - short_profit_target
-    fifty_percent_level = entry_price - (profit_distance * 0.5)
-    
-    if close <= fifty_percent_level and not short_trailing_active
-        short_trailing_active := true
-        short_trailing_stop := close + (atr_value * trailing_stop_multiplier)
-    
-    // Update trailing stop if active
-    if short_trailing_active
-        new_trailing_stop = close + (atr_value * trailing_stop_multiplier)
-        if new_trailing_stop < short_trailing_stop
-            short_trailing_stop := new_trailing_stop
-
-// Update previous bar trailing stop status
-long_trailing_active_prev := long_trailing_active
-short_trailing_active_prev := short_trailing_active
-
-if in_long_position or in_short_position
-    bars_in_trade += 1
-
+// PERFORMANCE TRACKING
 var int total_trades = 0
 var int winning_trades = 0
 var float total_pnl = 0.0
+var float peak_equity = 10000.0
 var float max_drawdown = 0.0
-var float peak_equity = 0.0
 
-if in_long_position[1] and not in_long_position
+if (in_long_position[1] and not in_long_position) or (in_short_position[1] and not in_short_position)
     total_trades += 1
-    // Calculate actual exit price based on exit condition
-    exit_price = close
-    if long_trailing_active_prev and close <= long_trailing_stop[1]
-        exit_price := long_trailing_stop[1]  // Trailing stop exit
-    else if close >= long_profit_target[1]
-        exit_price := long_profit_target[1]  // Profit target exit
-    else if close <= long_stop_loss[1]
-        exit_price := long_stop_loss[1]      // Stop loss exit
+    var float exit_price = na
     
-    trade_pnl = (exit_price - entry_price[1]) / entry_price[1] * 100
-    total_pnl += trade_pnl
-    if trade_pnl > 0
-        winning_trades += 1
-
-if in_short_position[1] and not in_short_position
-    total_trades += 1
-    // Calculate actual exit price based on exit condition
-    exit_price = close
-    if short_trailing_active_prev and close >= short_trailing_stop[1]
-        exit_price := short_trailing_stop[1]  // Trailing stop exit
-    else if close <= short_profit_target[1]
-        exit_price := short_profit_target[1]  // Profit target exit
-    else if close >= short_stop_loss[1]
-        exit_price := short_stop_loss[1]      // Stop loss exit
+    if in_long_position[1] and not in_long_position
+        if long_trailing_active[1] and close <= long_trailing_stop[1]
+            exit_price := long_trailing_stop[1]  // Trailing stop exit
+        else if close >= long_profit_target[1]
+            exit_price := long_profit_target[1]  // Profit target exit
+        else if close <= long_stop_loss[1]
+            exit_price := long_stop_loss[1]      // Stop loss exit
+    
+    if in_short_position[1] and not in_short_position
+        if short_trailing_active[1] and close >= short_trailing_stop[1]
+            exit_price := short_trailing_stop[1]  // Trailing stop exit
+        else if close <= short_profit_target[1]
+            exit_price := short_profit_target[1]  // Profit target exit
+        else if close >= short_stop_loss[1]
+            exit_price := short_stop_loss[1]      // Stop loss exit
     
     trade_pnl = (entry_price[1] - exit_price) / entry_price[1] * 100
     total_pnl += trade_pnl
@@ -271,24 +267,30 @@ orange_color = color.new(color.orange, 50)
 purple_color = color.new(color.purple, 30)
 fill_color = color.new(color.orange, 90)
 
-upper_line = plot(show_kc_bands ? kc_upper : na, "KC Upper", orange_color, 2)
-lower_line = plot(show_kc_bands ? kc_lower : na, "KC Lower", orange_color, 2)
-middle_line = plot(show_kc_bands ? kc_ma : na, "KC Middle", purple_color, 1)
+upper_line = plot(show_kc_bands ? kc_upper : na, "Scalp Upper", orange_color, 2)
+lower_line = plot(show_kc_bands ? kc_lower : na, "Scalp Lower", orange_color, 2)
+middle_line = plot(show_kc_bands ? kc_ma : na, "Scalp Middle", purple_color, 1)
 
 fill(upper_line, lower_line, fill_color)
 
 plot(show_trend_ma ? trend_ma : na, "Trend MA", color.purple, 2)
 
-// Multi-timeframe plots removed
-
-// Squeeze release signals only
+// Plot signals
 plotshape(show_signals and long_signal_enhanced, "Long Squeeze", shape.triangleup, location.belowbar, color.orange, size=size.small)
 plotshape(show_signals and short_signal_enhanced, "Short Squeeze", shape.triangledown, location.abovebar, color.purple, size=size.small)
 
-// SUBTLE SQUEEZE SQUARES
-plotchar(is_squeeze, "SQUEEZE SQUARE", "■", location.top, color.new(color.orange, 80), size=size.tiny, offset=0)
-plotchar(is_squeeze, "SQUEEZE SQUARE", "■", location.bottom, color.new(color.orange, 80), size=size.tiny, offset=0)
+// Vertical lines through signal bars
+if show_signals and long_signal_enhanced
+    line.new(bar_index, low, bar_index, high, color=color.orange, width=1, extend=extend.both, style=line.style_dotted)
+if show_signals and short_signal_enhanced
+    line.new(bar_index, low, bar_index, high, color=color.new(#800080, 0), width=1, extend=extend.both, style=line.style_dotted)
 
+// SQUEEZE CLOUD
+squeeze_upper = plot(is_squeeze ? high + (atr_value * 0.5) : na, "Squeeze Upper", color.new(color.purple, 40), 1)
+squeeze_lower = plot(is_squeeze ? low - (atr_value * 0.5) : na, "Squeeze Lower", color.new(color.purple, 40), 1)
+fill(squeeze_upper, squeeze_lower, color=color.new(color.purple, 60), title="Squeeze Cloud")
+
+// Plot risk management levels
 long_sl_show = in_long_position ? long_stop_loss : na
 long_tp_show = in_long_position ? long_profit_target : na
 long_ts_show = in_long_position and long_trailing_active ? long_trailing_stop : na
@@ -303,8 +305,7 @@ plot(short_sl_show, "Short SL", color.purple, 1, plot.style_circles)
 plot(short_tp_show, "Short TP", color.green, 1, plot.style_circles)
 plot(short_ts_show, "Short Trailing Stop", color.red, 2, plot.style_circles)
 
-// Labels removed for cleaner chart appearance
-
+// PERFORMANCE TABLE
 if show_performance and barstate.islast
     var table perf_table = table.new(position.top_right, 2, 3, bgcolor=color.new(color.black, 10), border_width=2, border_color=color.orange)
     table.cell(perf_table, 0, 0, "WTT Scalper Performance", text_color=color.white, text_size=size.normal, bgcolor=color.orange)
@@ -316,21 +317,10 @@ if show_performance and barstate.islast
     squeeze_color = is_squeeze ? color.yellow : color.silver
     table.cell(perf_table, 1, 2, squeeze_text, text_color=squeeze_color, text_size=size.small, bgcolor=color.new(color.black, 20))
 
-// ALERTS
-if long_signal_enhanced
-    alert("WTT Scalper: LONG signal at " + str.tostring(close, "#.##") + " | Check levels on chart", alert.freq_once_per_bar)
-
-if short_signal_enhanced
-    alert("WTT Scalper: SHORT signal at " + str.tostring(close, "#.##") + " | Check levels on chart", alert.freq_once_per_bar)
-
-if is_squeeze and not is_squeeze[1]
-    alert("WTT Scalper: SQUEEZE detected - Low volatility period, prepare for breakout", alert.freq_once_per_bar)
-
-if squeeze_release
-    alert("WTT Scalper: SQUEEZE RELEASE - Volatility expansion beginning", alert.freq_once_per_bar)
-
-if long_trailing_active and not long_trailing_active[1]
-    alert("WTT Scalper: TRAILING STOP ACTIVATED for LONG position at " + str.tostring(close, "#.##"), alert.freq_once_per_bar)
-
-if short_trailing_active and not short_trailing_active[1]
-    alert("WTT Scalper: TRAILING STOP ACTIVATED for SHORT position at " + str.tostring(close, "#.##"), alert.freq_once_per_bar)
+// ALERTS using function
+generate_alert(long_signal_enhanced, "WTT Scalper: LONG signal at " + str.tostring(close, "#.#####") + " | Check levels on chart")
+generate_alert(short_signal_enhanced, "WTT Scalper: SHORT signal at " + str.tostring(close, "#.#####") + " | Check levels on chart")
+generate_alert(is_squeeze and not is_squeeze[1], "WTT Scalper: SQUEEZE detected at " + str.tostring(close, "#.#####") + " - Low volatility period, prepare for breakout")
+generate_alert(squeeze_release, "WTT Scalper: SQUEEZE RELEASE at " + str.tostring(close, "#.#####") + " - Volatility expansion beginning")
+generate_alert(long_trailing_active and not long_trailing_active[1], "WTT Scalper: TRAILING STOP ACTIVATED for LONG position at " + str.tostring(close, "#.#####"))
+generate_alert(short_trailing_active and not short_trailing_active[1], "WTT Scalper: TRAILING STOP ACTIVATED for SHORT position at " + str.tostring(close, "#.#####"))

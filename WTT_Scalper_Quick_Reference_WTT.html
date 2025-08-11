@@ -12,6 +12,77 @@
             background: linear-gradient(145deg, #fff8f0 0%, #f8f0ff 100%);
             min-height: 100vh;
         }
+        
+        /* Print styles for PDF generation */
+        @media print {
+            body {
+                background: white !important;
+                margin: 0;
+                padding: 0;
+            }
+            .container {
+                max-width: none;
+                margin: 0;
+                border-radius: 0;
+                box-shadow: none;
+                border: none;
+                background: white;
+            }
+            .header {
+                background: #ff8c42 !important;
+                color: white !important;
+                padding: 20px;
+                page-break-after: always;
+            }
+            .content {
+                padding: 20px;
+            }
+            .section {
+                page-break-inside: avoid;
+                margin-bottom: 30px;
+            }
+            .section h2 {
+                page-break-after: avoid;
+                margin-top: 20px;
+            }
+            .feature-grid {
+                display: block;
+                page-break-inside: avoid;
+            }
+            .feature-box {
+                margin-bottom: 15px;
+                page-break-inside: avoid;
+                background: #f8f9fa !important;
+                border: 1px solid #dee2e6 !important;
+            }
+            .settings-table, .signal-table {
+                page-break-inside: avoid;
+                font-size: 0.9em;
+            }
+            .alert-list, .visual-elements {
+                page-break-inside: avoid;
+                background: #f8f9fa !important;
+                border: 1px solid #dee2e6 !important;
+            }
+            .footer {
+                page-break-before: always;
+                background: #2d3748 !important;
+                color: white !important;
+            }
+            /* Force page breaks at logical points */
+            .page-break {
+                page-break-before: always;
+            }
+            /* Ensure tables don't break across pages */
+            table {
+                page-break-inside: avoid;
+            }
+            /* Optimize for A4/Letter paper */
+            @page {
+                size: A4;
+                margin: 1in;
+            }
+        }
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -36,6 +107,37 @@
             margin: 10px 0 0 0;
             font-size: 1.2em;
             opacity: 0.9;
+        }
+        
+        .logo-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .logo {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .logo-image {
+            display: block;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .logo-subtitle {
+            display: block;
+            font-size: 0.9rem;
+            color: #8b5cf6;
+            font-weight: 500;
+            margin-top: 0.25rem;
+            letter-spacing: 1px;
         }
         .content {
             padding: 40px;
@@ -215,17 +317,23 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>WTT Scalper Trading System</h1>
-            <p>Advanced Keltner Channel-Based Scalping Strategy</p>
-            <span class="version-badge">Rev1.5</span>
-        </div>
+            <div class="container">
+            <div class="header">
+                <div class="logo-section">
+                    <div class="logo">
+                        <img src="/Users/billskrzypczak/Library/Mobile Documents/com~apple~CloudDocs/CodeBase/WTT_scalper/WTT_Logo_256x256.png" alt="WTT Logo" class="logo-image">
+                        <span class="logo-subtitle">WaveRider Trading Technologies</span>
+                    </div>
+                </div>
+                <h1>WTT Scalper Trading System</h1>
+                <p>Advanced Scalp Channel-Based Scalping Strategy</p>
+                <span class="version-badge">Rev1.5</span>
+            </div>
         
         <div class="content">
             <div class="section">
                 <h2>System Overview</h2>
-                <p>The WTT Scalper is a sophisticated trading system designed for short-term scalping opportunities using Keltner Channels. It focuses exclusively on squeeze release signals, combining volatility expansion detection, trend filtering, and volume confirmation to identify high-probability entry and exit points with conservative risk management.</p>
+                <p>The WTT Scalper is a sophisticated trading system designed for short-term scalping opportunities using scalp channels. It focuses exclusively on squeeze release signals, combining volatility expansion detection, trend filtering, and volume confirmation to identify high-probability entry and exit points with conservative risk management.</p>
             </div>
 
             <div class="section">
@@ -233,7 +341,7 @@
                 <div class="feature-grid">
                     <div class="feature-box long">
                         <h3>Single-Timeframe Analysis</h3>
-                        <p>Simplified and reliable Keltner Channel analysis focused on the current timeframe for consistent performance.</p>
+                        <p>Simplified and reliable scalp channel analysis focused on the current timeframe for consistent performance.</p>
                     </div>
                     <div class="feature-box short">
                         <h3>Squeeze Release Detection</h3>
@@ -262,7 +370,7 @@
                 </div>
             </div>
 
-            <div class="section">
+            <div class="section page-break">
                 <h2>Input Settings</h2>
                 <div class="settings">
                     <table class="settings-table">
@@ -276,13 +384,13 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td rowspan="4">Keltner Channel</td>
-                                <td>KC Length</td>
+                                <td rowspan="4">Scalp Channels</td>
+                                <td>Channel Length</td>
                                 <td>20</td>
-                                <td>Period for Keltner Channel calculation</td>
+                                <td>Period for scalp channel calculation</td>
                             </tr>
                             <tr>
-                                <td>KC Multiplier</td>
+                                <td>Channel Multiplier</td>
                                 <td>2.0</td>
                                 <td>ATR multiplier for channel width</td>
                             </tr>
@@ -348,7 +456,7 @@
                                 <td rowspan="4">Visual</td>
                                 <td>Show KC Bands</td>
                                 <td>True</td>
-                                <td>Display Keltner Channel bands</td>
+                                <td>Display scalp channel bands</td>
                             </tr>
                             <tr>
                                 <td>Show Trend MA</td>
@@ -417,7 +525,7 @@
                 <div class="visual-elements">
                     <h3>Chart Components</h3>
                     <ul>
-                        <li><strong>Keltner Channels:</strong> Orange bands with purple middle line</li>
+                        <li><strong>Scalp Channels:</strong> Orange bands with purple middle line</li>
                         <li><strong>Trend MA:</strong> 50-period EMA (optional display)</li>
                         <li><strong>Squeeze Signals:</strong> Small triangles (orange for long, purple for short)</li>
                         <li><strong>Squeeze Indicator:</strong> Tiny orange squares at top/bottom when squeeze active</li>
@@ -442,7 +550,7 @@
                 </ul>
             </div>
 
-            <div class="section">
+            <div class="section page-break">
                 <h2>Strategy Version</h2>
                 <div class="new-feature">
                     <h3>Automated Trading Features</h3>
@@ -460,7 +568,7 @@
                 </ul>
             </div>
 
-            <div class="section">
+            <div class="section page-break">
                 <h2>Revision History</h2>
                 <div class="alert-list">
                     <h3>Recent Updates</h3>
@@ -470,7 +578,7 @@
                     <li><strong>R1.3:</strong> Squeeze-only strategy - converted to squeeze release signals only, changed visual signals to directional triangles, updated stop loss colors to match signals, improved signal quality and reduced noise</li>
                         <li><strong>R1.2:</strong> Simplified interface - removed unnecessary input controls, hardcoded trend filter to 50-period EMA, removed unused inputs, streamlined alerts</li>
                         <li><strong>R1.1:</strong> Fixed plot issues - resolved "Undeclared identifier 'plot'" errors, improved Pine Script v5 compatibility</li>
-                        <li><strong>R1.0:</strong> Initial release - comprehensive Keltner Channel trading system</li>
+                        <li><strong>R1.0:</strong> Initial release - comprehensive scalp channel-based trading system</li>
                     </ul>
                 </div>
             </div>
