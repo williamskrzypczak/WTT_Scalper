@@ -2,7 +2,7 @@
 
 **WaveRider Trading Technologies**  
 **Advanced Scalp Channel-Based Scalping Strategy**  
-**Rev1.6**
+**Rev1.7**
 
 ---
 
@@ -132,6 +132,7 @@ The WTT Scalper is also available as a **Pine Script Strategy** with additional 
 
 ### Recent Updates
 
+- **R1.7:** Performance tracking implementation and system optimization - added signal-based performance tracking with success rate and ratio metrics, implemented proper success measurement for profit targets and trailing stops, enhanced performance display table with comprehensive success metrics, optimized trailing stop functionality with red dot visualization and proper reset logic, improved squeeze cloud visibility with darker purple fill, streamlined code structure and removed unnecessary complexity
 - **R1.6:** Enhanced alert precision and visual improvements - increased alert price precision to 5 decimal places for all signal types, optimized code structure with functions, added squeeze cloud visualization with purple fill and orange boundary lines, improved signal visibility with small triangles and dotted vertical lines, enhanced color scheme consistency with WTT branding
 - **R1.5:** Simplified performance table - streamlined to show only essential metrics (win rate and squeeze status), changed squeeze indicator squares to orange for better WTT branding consistency
 - **R1.4:** Trailing stop enhancement - added trailing stop functionality that activates when price reaches 50% of profit target, implemented ATR-based trailing stops with visual indicators
