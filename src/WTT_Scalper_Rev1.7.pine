@@ -254,6 +254,9 @@ if (in_long_position[1] and not in_long_position) or (in_short_position[1] and n
 success_rate = total_signals > 0 ? (profitable_trades / total_signals) * 100 : 0
 success_ratio = total_signals > 0 ? str.tostring(profitable_trades) + ":" + str.tostring(total_signals - profitable_trades) : "0:0"
 
+// Calculate current risk-to-reward ratio
+risk_reward_ratio = profit_target_multiplier / stop_loss_multiplier
+
 
 
 // PLOTTING SECTION
@@ -301,15 +304,17 @@ plot(short_ts_show, "Short Trailing Stop", color.red, 1, plot.style_circles)
 
 // PERFORMANCE DISPLAY
 if barstate.islast
-    var table perf_table = table.new(position.top_right, 2, 4, bgcolor=color.new(color.black, 10), border_width=2, border_color=color.orange)
+    var table perf_table = table.new(position.top_right, 2, 5, bgcolor=color.new(color.black, 10), border_width=2, border_color=color.orange)
     table.cell(perf_table, 0, 0, "WTT Scalper Performance", text_color=color.white, text_size=size.normal, bgcolor=color.orange)
     table.cell(perf_table, 1, 0, "", bgcolor=color.orange)
     table.cell(perf_table, 0, 1, "Success Rate", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
     table.cell(perf_table, 1, 1, str.tostring(success_rate, "#.#") + "%", text_color=color.lime, text_size=size.small, bgcolor=color.new(color.black, 20))
     table.cell(perf_table, 0, 2, "Success Ratio", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
-    table.cell(perf_table, 1, 2, success_ratio, text_color=color.lime, text_size=size.small, bgcolor=color.new(color.black, 20))
-    table.cell(perf_table, 0, 3, "Total Signals", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
-    table.cell(perf_table, 1, 3, str.tostring(total_signals), text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(perf_table, 1, 2, success_ratio + " (W:L)", text_color=color.lime, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(perf_table, 0, 3, "Risk:Reward", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
+    table.cell(perf_table, 1, 3, "1:" + str.tostring(risk_reward_ratio, "#.##"), text_color=color.yellow, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(perf_table, 0, 4, "Total Signals", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 0))
+    table.cell(perf_table, 1, 4, str.tostring(total_signals), text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
 
 
 
