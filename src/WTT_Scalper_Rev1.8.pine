@@ -1,11 +1,16 @@
 //@version=5
-indicator("WTT Scalper Rev1.7", shorttitle="WTT_Scalper_R1.7", overlay=true)
+indicator("WTT Scalper Rev1.8", shorttitle="WTT_Scalper_R1.8", overlay=true)
 
 // =============================================================================
 // WaveRider Trading Technologies - Keltner Channel Trading System
 // =============================================================================
 //
 // REVISION HISTORY (Most Recent First):
+// R1.8: Documentation and Repository Integration - Updated all documentation to reflect current system
+//       capabilities and features. Enhanced README.md with comprehensive feature overview and installation
+//       instructions. Created detailed trading plan documentation with complete strategy framework.
+//       Integrated repository with proper version control and professional documentation standards.
+//       Maintained all core functionality while providing complete system documentation for users.
 // R1.7: Performance Tracking Implementation and System Optimization - Added signal-based performance tracking
 //       with success rate and ratio metrics. Implemented proper success measurement for profit targets and
 //       trailing stops. Enhanced performance display table with comprehensive success metrics. Optimized

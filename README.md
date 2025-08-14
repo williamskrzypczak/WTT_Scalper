@@ -1,4 +1,4 @@
-# WTT Scalper R1.7
+# WTT Scalper R1.8
 
 ## WaveRider Trading Technologies - Keltner Channel Trading System
 
@@ -132,7 +132,14 @@ A sophisticated scalping indicator designed for high-frequency trading using Kel
 
 ## 📝 **VERSION HISTORY**
 
-### **R1.7** (Current)
+### **R1.8** (Current)
+- Documentation and repository integration
+- Enhanced README.md with comprehensive feature overview
+- Created detailed trading plan documentation
+- Integrated repository with proper version control
+- Professional documentation standards implementation
+
+### **R1.7**
 - Performance tracking implementation and system optimization
 - Signal-based success rate and ratio metrics
 - Enhanced performance display table
@@ -181,7 +188,7 @@ A sophisticated scalping indicator designed for high-frequency trading using Kel
 
 1. **Download**: Clone or download the repository
 2. **Pine Script**: Open TradingView Pine Script editor
-3. **Copy Code**: Copy the contents of `src/WTT_Scalper_Rev1.7.pine`
+3. **Copy Code**: Copy the contents of `src/WTT_Scalper_Rev1.8.pine`
 4. **Paste**: Paste into TradingView Pine Script editor
 5. **Apply**: Add to chart and configure parameters
 

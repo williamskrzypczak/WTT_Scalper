@@ -1,4 +1,4 @@
-# WTT Scalper Trading Plan
+# WTT Scalper R1.8 - Trading Plan
 
 **WaveRider Trading Technologies**  
 **Comprehensive Trading Strategy for Scalp Channel-Based Scalping**  
